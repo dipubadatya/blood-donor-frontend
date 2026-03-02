@@ -1,212 +1,175 @@
 
-# 🩸 Blood Donor Tracker – Frontend
 
-A modern, responsive React application that enables medical clinics to find nearby blood donors using interactive maps, role-based dashboards, and real-time distance filtering.
+# Blood Donor Tracker
 
----
+A React application that helps medical clinics find nearby blood donors. Features interactive maps, role-based dashboards, distance-based filtering, and real-time donor visibility.
 
-## 🌐 Live Application
+**Live App:** [https://blood-donor-tracker.vercel.app](https://blood-donor-tracker.vercel.app)
+**Backend API:** [https://blood-donor-backend-0ri5.onrender.com](https://blood-donor-backend-0ri5.onrender.com)
 
-Frontend:
-https://blood-donor-tracker.vercel.app
-
-Backend API:
-https://blood-donor-backend-0ri5.onrender.com
+**Repositories:**
+[Frontend](https://github.com/dipubadatya/blood-donor-frontend) · [Backend](https://github.com/dipubadatya/blood-donor-backend)
 
 ---
 
-## 📦 Repository
+## The Problem
 
-Frontend:
-https://github.com/dipubadatya/blood-donor-frontend
-
-Backend:
-https://github.com/dipubadatya/blood-donor-backend
+When a patient urgently needs blood, clinics waste critical time calling through donor lists manually. There's no quick way to know which donors are nearby, available, and have the right blood group. This app puts that information on a map in seconds.
 
 ---
 
-## 🚀 Features
+## How It Works
 
-### 🔐 Authentication UI
+There are two roles — **Donors** and **Medical Staff**. Each sees a different dashboard after logging in.
 
-- Login & Registration
-- Role-based redirection
-- Protected routes
-- Token-based session handling
+**Donors** can:
+- Update their profile and location coordinates
+- Toggle their availability on or off
+- Control whether they appear in search results
 
----
-
-### 🧑‍🩸 Donor Dashboard
-
-- Update profile details
-- Update location coordinates
-- Toggle availability (On / Off)
-- View current availability status
-
----
-
-### 🏥 Medical Dashboard
-
+**Medical Staff** can:
 - Search donors by blood group
-- Filter donors within 5km / 10km radius
-- Interactive map with donor markers
-- Donor cards displaying:
-  - Name
-  - Blood group
-  - Distance
-  - Availability
-  - Contact option
+- Filter results within a 5km or 10km radius
+- View matching donors on an interactive map
+- See each donor's name, blood group, distance, availability, and contact option
 
 ---
 
-## 🗺 Map Integration
+## Built With
 
-Built using Leaflet and React Leaflet:
+**Frontend:** React 19, Vite, React Router v7, Tailwind CSS, Leaflet, Framer Motion, Axios
 
-- Interactive OpenStreetMap tiles
-- Dynamic marker rendering
-- Distance-based filtering
-- Real-time donor visibility
+**Deployment:** Vercel (frontend), Render (backend)
 
 ---
 
-## 🛠 Tech Stack
+## Screenshots
 
-- React 19
-- Vite
-- React Router v7
-- Axios
-- Tailwind CSS
-- Leaflet
-- Framer Motion
-- Vercel (Deployment)
+<div align="center">
+
+### Landing Page
+<img width="100%" alt="Landing Page" src="https://github.com/user-attachments/assets/b6904c68-4f40-4862-8670-447080c38344" />
+
+<br/><br/>
+
+### Login
+<img width="100%" alt="Login Page" src="https://github.com/user-attachments/assets/352e3fa2-735f-45a6-ad4c-8982de53976f" />
+
+<br/><br/>
+
+### Registration
+<img width="100%" alt="Register Page" src="https://github.com/user-attachments/assets/9c6dd99e-4a3c-499b-803c-ec5b99611b0b" />
+
+<br/><br/>
+
+### Medical Search
+<img width="100%" alt="Medical Search Page" src="https://github.com/user-attachments/assets/15747604-641b-418a-bd14-c1b06bc25644" />
+
+<br/><br/>
+
+### Map View
+<img width="100%" alt="Map View" src="https://github.com/user-attachments/assets/a523569e-45b8-4dbb-b78a-7f8ec8a60dd3" />
+
+<br/><br/>
+
+### Donor Dashboard
+<img width="100%" alt="Donor Dashboard" src="https://github.com/user-attachments/assets/054eef87-56ea-43d4-9410-3377a2d6db19" />
+
+</div>
 
 ---
 
-## 📁 Folder Structure
+## Map Integration
+
+Built with Leaflet and React Leaflet:
+
+- OpenStreetMap tile layer
+- Dynamic marker rendering based on search results
+- Distance-based filtering draws only relevant donors
+- Markers update as donors toggle availability
+
+---
+
+## Authentication
+
+- Login and registration with role selection
+- Token-based session handling
+- Protected routes redirect unauthorized users
+- Role-based redirection — donors and medical staff land on different dashboards
+
+---
+
+## Folder Structure
 
 ```
-
 frontend/
-│
 ├── src/
 │   ├── components/
 │   ├── pages/
 │   ├── services/
 │   ├── context/
 │   └── App.jsx
-│
 ├── public/
 ├── vercel.json
 └── package.json
-
 ```
 
 ---
 
-## ⚙️ Installation (Local Development)
+## Getting Started
 
-### 1️⃣ Clone Repository
+### Clone and install
 
-```
-
-git clone [https://github.com/dipubadatya/blood-donor-frontend.git](https://github.com/dipubadatya/blood-donor-frontend.git)
+```bash
+git clone https://github.com/dipubadatya/blood-donor-frontend.git
 cd blood-donor-frontend
-
-```
-
-### 2️⃣ Install Dependencies
-
-```
-
 npm install
-
 ```
 
-### 3️⃣ Setup Environment Variables
+### Configure environment
 
-Create `.env` file:
-
-```
-
-VITE_BACKEND_URL=[https://blood-donor-backend-0ri5.onrender.com/api](https://blood-donor-backend-0ri5.onrender.com/api)
+Create a `.env` file in the root directory:
 
 ```
-
-### 4️⃣ Run Development Server
-
+VITE_BACKEND_URL=https://blood-donor-backend-0ri5.onrender.com/api
 ```
 
+### Run locally
+
+```bash
 npm run dev
-
 ```
 
-Runs on:
-http://localhost:5173
+Opens at `http://localhost:5173`
 
----
+### Build for production
 
-## 🚀 Build for Production
-
-```
-
+```bash
 npm run build
-
 ```
 
 ---
 
-## 🔄 SPA Routing Fix (Vercel)
+## SPA Routing on Vercel
 
-`vercel.json` added:
+A `vercel.json` file handles client-side routing so page refreshes don't return 404:
 
-```
-
+```json
 {
-"rewrites": [
-{
-"source": "/(.*)",
-"destination": "/index.html"
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
-]
-}
-
 ```
-
-Prevents 404 errors on refresh.
 
 ---
 
-## 📸 Screenshots
+## Author
 
-- Landing Page
-<p align="center">  <img width="1920" height="1080" alt="Screenshot 2026-02-21 130849" src="https://github.com/user-attachments/assets/b6904c68-4f40-4862-8670-447080c38344" /> </p>
+**Dipu Badatya**
 
-- Login Page
-<p align="center">  <img width="1920" height="1080" alt="Screenshot 2026-02-21 130808" src="https://github.com/user-attachments/assets/352e3fa2-735f-45a6-ad4c-8982de53976f" />  </p>
-
-- Register  Page
-<p align="center">  <img width="1920" height="1080" alt="Screenshot 2026-02-21 130821" src="https://github.com/user-attachments/assets/9c6dd99e-4a3c-499b-803c-ec5b99611b0b" />  </p>
-
-- Medical Search Page
-<p align="center">  <img width="1920" height="1080" alt="Screenshot 2026-02-21 130912" src="https://github.com/user-attachments/assets/15747604-641b-418a-bd14-c1b06bc25644" /> </p>
-
-- Map View
-<p align="center">  <img width="1920" height="1080" alt="Screenshot 2026-02-21 131018" src="https://github.com/user-attachments/assets/a523569e-45b8-4dbb-b78a-7f8ec8a60dd3" />  </p>
-
-- Donor Dashboard
-<p align="center">  <img width="1920" height="1080" alt="Screenshot 2026-02-21 131108" src="https://github.com/user-attachments/assets/054eef87-56ea-43d4-9410-3377a2d6db19" />  </p>
-
-
----
-
-## 👨‍💻 Author
-
-DIPU BADATYA
-GitHub: https://github.com/dipubadatya  
-LinkedIn: https://www.linkedin.com/in/dipu-badatya/
-```
-
-
-
-Tell me which one you want.
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/dipu-badatya/)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/dipubadatya)
