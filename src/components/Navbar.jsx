@@ -2,11 +2,68 @@
 // export default Navbar;
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
-import { LogOut, HeartPulse } from 'lucide-react';
+import { LogOut, HeartPulse, Bell, Check, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../services/api';
+import { useSocket } from '../context/SocketContext';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (socket) {
+      // Listen for socket events to prepend new notifications
+      const handleNewNotification = () => fetchNotifications();
+
+      socket.on('emergency_created', handleNewNotification);
+      socket.on('request_accepted', handleNewNotification);
+      socket.on('request_completed', handleNewNotification);
+
+      return () => {
+        socket.off('emergency_created', handleNewNotification);
+        socket.off('request_accepted', handleNewNotification);
+        socket.off('request_completed', handleNewNotification);
+      };
+    }
+  }, [socket]);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await getNotifications();
+      setNotifications(res.data.data);
+    } catch (err) {
+      console.error("Failed to fetch notifications", err);
+    }
+  };
+
+  const handleMarkAsRead = async (id, e) => {
+    e.stopPropagation();
+    try {
+      await markNotificationRead(id);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -20,7 +77,7 @@ const Navbar = () => {
         <Link to="/" className="ll-brand">
           <div className="ll-brand-icon">
             <HeartPulse className="text-white " size={20} />
-           
+
           </div>
           <span className="ll-brand-text">LifeLink</span>
         </Link>
@@ -28,18 +85,67 @@ const Navbar = () => {
         {/* User Actions */}
         <div className="ll-nav-actions">
           {user && (
-            <div className="ll-profile-badge">
-              <div className="ll-avatar">
-                {user?.name?.charAt(0)}
-                <span className="ll-online-indicator"></span>
+            <>
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors relative"
+                >
+                  <Bell size={20} className="text-gray-600 dark:text-zinc-300" />
+                  {notifications.filter(n => !n.isRead).length > 0 && (
+                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-zinc-900"></span>
+                  )}
+                </button>
+
+                {/* Notification Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden z-50">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
+                      <h3 className="font-bold text-gray-900 dark:text-white">Notifications</h3>
+                      <button onClick={handleMarkAllAsRead} className="text-xs text-blue-500 hover:text-blue-600 font-medium">
+                        Mark all read
+                      </button>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-gray-500">No notifications yet.</div>
+                      ) : (
+                        notifications.map(notif => (
+                          <div key={notif._id} className={`p-4 border-b border-gray-50 dark:border-zinc-800/50 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors ${!notif.isRead ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
+                            <div className="flex justify-between items-start gap-4">
+                              <div>
+                                <h4 className={`text-sm font-semibold mb-1 ${!notif.isRead ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-zinc-300'}`}>{notif.title}</h4>
+                                <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed">{notif.message}</p>
+                              </div>
+                              {!notif.isRead && (
+                                <button onClick={(e) => handleMarkAsRead(notif._id, e)} className="text-blue-500 hover:bg-blue-100 p-1 rounded-full transition-colors">
+                                  <Check size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="ll-profile-info">
-                <span className="ll-user-name">{user?.name}</span>
-                <span className="ll-user-type">
-                   {user?.role === 'medical' ? 'Clinic Partner' : `Donor • ${user?.bloodGroup}`}
-                </span>
+
+              {/* Profile Badge */}
+              <div className="ll-profile-badge">
+                <div className="ll-avatar">
+                  {user?.name?.charAt(0)}
+                  <span className="ll-online-indicator"></span>
+                </div>
+                <div className="ll-profile-info">
+                  <span className="ll-user-name">{user?.name}</span>
+                  <span className="ll-user-type">
+                    {user?.role === 'medical' ? 'Clinic Partner' : `Donor • ${user?.bloodGroup}`}
+                  </span>
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           <button onClick={handleLogout} className="ll-logout-btn" title="Sign Out">

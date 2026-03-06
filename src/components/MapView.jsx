@@ -1,3 +1,5 @@
+
+// components/MapView.jsx
 import { useEffect, useRef } from "react";
 import {
   MapContainer,
@@ -5,80 +7,85 @@ import {
   Marker,
   Popup,
   Circle,
+  Polyline,
   useMap,
 } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 
-// ─── Fix Leaflet default marker icon issue with bundlers ───
+// Fix Leaflet default marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
-// ─── Custom Icons ───
-const createCustomIcon = (color, emoji) => {
+// Custom Icons
+const createCustomIcon = (color, emoji, size = 40) => {
   return L.divIcon({
     html: `
       <div style="
-        background: ${color};
-        width: 36px;
-        height: 36px;
-        border-radius: 50% 50% 50% 0;
-        transform: rotate(-45deg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 3px solid #ffffff;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.3);
         position: relative;
+        width: ${size}px;
+        height: ${size}px;
       ">
+        <div style="
+          position: absolute;
+          top: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: ${size}px;
+          height: ${size}px;
+          background: ${color};
+          border-radius: 50% 50% 50% 0;
+          transform: translateX(-50%) rotate(-45deg);
+          border: 3px solid #ffffff;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        "></div>
         <span style="
-          transform: rotate(45deg);
-          font-size: 16px;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -60%);
+          font-size: ${size * 0.4}px;
           line-height: 1;
+          z-index: 1;
         ">${emoji}</span>
       </div>
     `,
     className: "custom-marker",
-    iconSize: [36, 36],
-    iconAnchor: [18, 36],
-    popupAnchor: [0, -36],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size],
+    popupAnchor: [0, -size],
   });
 };
 
-const hospitalIcon = createCustomIcon("#3b82f6", "🏥");
-const donorIcon = createCustomIcon("#dc2626", "🩸");
-const donorFarIcon = createCustomIcon("#f97316", "🩸");
-const donorCloseIcon = createCustomIcon("#16a34a", "🩸");
+const hospitalIcon = createCustomIcon("#3b82f6", "🏥", 44);
+const donorCloseIcon = createCustomIcon("#10b981", "🩸", 38);
+const donorMidIcon = createCustomIcon("#f59e0b", "🩸", 38);
+const donorFarIcon = createCustomIcon("#ef4444", "🩸", 38);
 
 const getDonorIcon = (distanceInMeters) => {
   if (distanceInMeters <= 1000) return donorCloseIcon;
-  if (distanceInMeters <= 3000) return donorIcon;
+  if (distanceInMeters <= 3000) return donorMidIcon;
   return donorFarIcon;
 };
 
-// ─── Component to recenter map when center changes ───
+// Recenter map component
 const RecenterMap = ({ center, zoom }) => {
   const map = useMap();
-
   useEffect(() => {
     if (center && center[0] !== 0 && center[1] !== 0) {
-      map.flyTo(center, zoom || 13, { duration: 1.5 });
+      map.flyTo(center, zoom || 13, { duration: 1.2 });
     }
   }, [center, zoom, map]);
-
   return null;
 };
 
-// ─── Fit map to show all markers ───
+// Fit bounds component
 const FitBounds = ({ donors, center }) => {
   const map = useMap();
-
   useEffect(() => {
     if (donors && donors.length > 0 && center) {
       const points = [center];
@@ -87,80 +94,89 @@ const FitBounds = ({ donors, center }) => {
           points.push([d.location.coordinates[1], d.location.coordinates[0]]);
         }
       });
-
       if (points.length > 1) {
         const bounds = L.latLngBounds(points);
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
       }
     }
   }, [donors, center, map]);
-
   return null;
 };
 
-// ─── Main MapView Component ───
-const MapView = ({ center, donors = [], radius = 5000, searchPerformed }) => {
-  const mapRef = useRef(null);
-
-  // Default center (India - Delhi)
+// Main Component
+const MapView = ({ center, donors = [], radius = 5000, searchPerformed, darkMode = true, route = null, routeColor = "#3b82f6" }) => {
   const defaultCenter = [28.6139, 77.209];
-  const mapCenter =
-    center && center[0] !== 0 && center[1] !== 0 ? center : defaultCenter;
+  const mapCenter = center && center[0] !== 0 && center[1] !== 0 ? center : defaultCenter;
+
+  // Map tile URLs
+  const lightTiles = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const darkTiles = "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png";
 
   return (
-    <div style={styles.mapWrapper}>
+    <div className="relative w-full h-full">
       <MapContainer
         center={mapCenter}
         zoom={13}
-        style={styles.mapContainer}
-        ref={mapRef}
+        className="w-full h-full z-0"
         scrollWheelZoom={true}
         zoomControl={true}
       >
-        {/* ─── OpenStreetMap Tiles ─── */}
+        {/* Map Tiles */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url={darkMode ? darkTiles : lightTiles}
         />
 
-        {/* ─── Recenter on search ─── */}
         <RecenterMap center={mapCenter} zoom={13} />
 
-        {/* ─── Fit bounds to show all donors ─── */}
         {searchPerformed && donors.length > 0 && (
           <FitBounds donors={donors} center={mapCenter} />
         )}
 
-        {/* ─── Search Radius Circle ─── */}
-        {searchPerformed && center && center[0] !== 0 && (
+        {/* Route Polyline */}
+        {route && route.length > 0 && (
+          <Polyline
+            positions={route}
+            pathOptions={{
+              color: routeColor,
+              weight: 4,
+              opacity: 0.8,
+              dashArray: "10 8",
+              lineJoin: "round"
+            }}
+          />
+        )}
+
+        {/* Search Radius */}
+        {searchPerformed && center && center[0] !== 0 && !route && (
           <Circle
             center={mapCenter}
             radius={radius}
             pathOptions={{
-              color: "#dc2626",
-              fillColor: "#dc2626",
-              fillOpacity: 0.06,
+              color: "#ef4444",
+              fillColor: "#ef4444",
+              fillOpacity: 0.08,
               weight: 2,
               dashArray: "8 4",
             }}
           />
         )}
 
-        {/* ─── Hospital/Medical Facility Marker ─── */}
+        {/* Hospital Marker */}
         {center && center[0] !== 0 && (
           <Marker position={mapCenter} icon={hospitalIcon}>
             <Popup>
-              <div style={styles.popupContent}>
-                <div style={styles.popupHeader}>
-                  <span style={styles.popupHeaderIcon}>🏥</span>
-                  <span style={styles.popupHeaderText}>Your Location</span>
+              <div className="min-w-[200px]">
+                <div className="bg-blue-500 text-white px-4 py-3 -mx-5 -mt-3 mb-3 rounded-t-lg flex items-center gap-2">
+                  <span className="text-lg">🏥</span>
+                  <span className="font-semibold">Your Location</span>
                 </div>
-                <div style={styles.popupBody}>
-                  <p style={styles.popupLabel}>Medical Facility</p>
-                  <p style={styles.popupCoords}>
+                <div className="px-1 pb-2">
+                  <p className="text-sm text-gray-600 mb-2">Medical Facility</p>
+                  <p className="text-xs font-mono text-gray-500 mb-3">
                     {mapCenter[0].toFixed(4)}°N, {mapCenter[1].toFixed(4)}°E
                   </p>
-                  <div style={styles.popupRadiusBadge}>
+                  <div className="inline-block px-3 py-1 bg-red-50 text-red-600 text-xs font-semibold rounded-lg">
                     Search Radius: {(radius / 1000).toFixed(1)} km
                   </div>
                 </div>
@@ -169,295 +185,165 @@ const MapView = ({ center, donors = [], radius = 5000, searchPerformed }) => {
           </Marker>
         )}
 
-        {/* ─── Donor Markers ─── */}
-        {donors.map((donor, idx) => {
-          if (!donor.location?.coordinates) return null;
+        {/* Donor Markers */}
+        <MarkerClusterGroup
+          chunkedLoading
+          maxClusterRadius={50}
+          showCoverageOnHover={false}
+        >
+          {donors.map((donor, idx) => {
+            if (!donor.location?.coordinates) return null;
+            const [lng, lat] = donor.location.coordinates;
 
-          const [lng, lat] = donor.location.coordinates;
-          const position = [lat, lng];
-
-          return (
-            <Marker
-              key={donor._id || idx}
-              position={position}
-              icon={getDonorIcon(donor.distanceInMeters)}
-            >
-              <Popup>
-                <div style={styles.popupContent}>
-                  {/* Popup Header */}
-                  <div
-                    style={{
-                      ...styles.popupHeader,
-                      backgroundColor: "#dc2626",
-                    }}
-                  >
-                    <span style={styles.popupHeaderIcon}>🩸</span>
-                    <span style={styles.popupHeaderText}>
-                      Donor #{idx + 1}
-                    </span>
-                    <span style={styles.popupBloodBadge}>
-                      {donor.bloodGroup}
-                    </span>
-                  </div>
-
-                  {/* Popup Body */}
-                  <div style={styles.popupBody}>
-                    <p style={styles.popupName}>{donor.name}</p>
-
-                    <div style={styles.popupInfoRow}>
-                      <span>📧</span>
-                      <span style={styles.popupInfoText}>{donor.email}</span>
-                    </div>
-
-                    {donor.phone && (
-                      <div style={styles.popupInfoRow}>
-                        <span>📱</span>
-                        <span style={styles.popupInfoText}>{donor.phone}</span>
+            return (
+              <Marker
+                key={donor._id || idx}
+                position={[lat, lng]}
+                icon={getDonorIcon(donor.distanceInMeters)}
+              >
+                <Popup>
+                  <div className="min-w-[220px]">
+                    {/* Header */}
+                    <div className="bg-red-500 text-white px-4 py-3 -mx-5 -mt-3 mb-3 rounded-t-lg flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🩸</span>
+                        <span className="font-semibold">Donor #{idx + 1}</span>
                       </div>
-                    )}
-
-                    <div style={styles.popupInfoRow}>
-                      <span>📍</span>
-                      <span style={styles.popupInfoText}>
-                        {donor.distanceInKm !== undefined
-                          ? donor.distanceInKm < 1
-                            ? `${donor.distanceInMeters}m away`
-                            : `${donor.distanceInKm} km away`
-                          : "Distance unknown"}
+                      <span className="bg-white/20 px-2 py-0.5 rounded text-sm font-bold">
+                        {donor.bloodGroup}
                       </span>
                     </div>
 
-                    <div style={styles.popupInfoRow}>
-                      <span>{donor.isAvailable ? "🟢" : "🔴"}</span>
-                      <span
-                        style={{
-                          ...styles.popupInfoText,
-                          color: donor.isAvailable ? "#16a34a" : "#dc2626",
-                          fontWeight: "700",
-                        }}
-                      >
-                        {donor.isAvailable ? "Available" : "Unavailable"}
-                      </span>
-                    </div>
+                    {/* Content */}
+                    <div className="px-1 pb-2">
+                      <p className="font-semibold text-gray-900 mb-3">{donor.name}</p>
 
-                    {/* Action Buttons */}
-                    <div style={styles.popupActions}>
-                      {donor.phone && (
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span>📧</span>
+                          <span className="text-gray-600 truncate">{donor.email}</span>
+                        </div>
+                        {donor.phone && (
+                          <div className="flex items-center gap-2">
+                            <span>📱</span>
+                            <span className="text-gray-600">{donor.phone}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <span>📍</span>
+                          <span className="text-gray-600">
+                            {donor.distanceInKm < 1
+                              ? `${donor.distanceInMeters}m away`
+                              : `${donor.distanceInKm?.toFixed(1) || '?'}km away`}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>{donor.isAvailable ? "🟢" : "🔴"}</span>
+                          <span className={`font-semibold ${donor.isAvailable ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {donor.isAvailable ? "Available" : "Unavailable"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2 mt-4">
+                        {donor.phone && (
+                          <a
+                            href={`tel:${donor.phone}`}
+                            className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-center rounded-lg text-sm font-semibold transition-colors"
+                          >
+                            📞 Call
+                          </a>
+                        )}
                         <a
-                          href={`tel:${donor.phone}`}
-                          style={styles.popupCallBtn}
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 text-center rounded-lg text-sm font-semibold border border-blue-200 transition-colors"
                         >
-                          📞 Call
+                          🗺️ Navigate
                         </a>
-                      )}
-                      <a
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={styles.popupDirBtn}
-                      >
-                        🗺️ Navigate
-                      </a>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
+                </Popup>
+              </Marker>
+            );
+          })}
+        </MarkerClusterGroup>
       </MapContainer>
 
-      {/* ─── Map Legend ─── */}
-      <div style={styles.legend}>
-        <div style={styles.legendItem}>
-          <span style={{ ...styles.legendDot, backgroundColor: "#3b82f6" }}></span>
-          <span style={styles.legendText}>Your Location</span>
-        </div>
-        <div style={styles.legendItem}>
-          <span style={{ ...styles.legendDot, backgroundColor: "#16a34a" }}></span>
-          <span style={styles.legendText}>&lt; 1 km</span>
-        </div>
-        <div style={styles.legendItem}>
-          <span style={{ ...styles.legendDot, backgroundColor: "#dc2626" }}></span>
-          <span style={styles.legendText}>1–3 km</span>
-        </div>
-        <div style={styles.legendItem}>
-          <span style={{ ...styles.legendDot, backgroundColor: "#f97316" }}></span>
-          <span style={styles.legendText}>&gt; 3 km</span>
+      {/* Legend */}
+      <div className={`absolute bottom-4 left-4 z-[1000] ${darkMode ? 'bg-zinc-900/95' : 'bg-white/95'
+        } backdrop-blur-sm rounded-xl p-3 shadow-lg border ${darkMode ? 'border-zinc-800' : 'border-gray-200'}`}>
+        <div className="flex flex-wrap items-center gap-4 text-xs">
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow" />
+            <span className={darkMode ? 'text-zinc-300' : 'text-gray-600'}>You</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow" />
+            <span className={darkMode ? 'text-zinc-300' : 'text-gray-600'}>&lt;1km</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-full bg-amber-500 border-2 border-white shadow" />
+            <span className={darkMode ? 'text-zinc-300' : 'text-gray-600'}>1-3km</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow" />
+            <span className={darkMode ? 'text-zinc-300' : 'text-gray-600'}>&gt;3km</span>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-// ──────────────────────────────────────────────
-// Styles
-// ──────────────────────────────────────────────
-const styles = {
-  mapWrapper: {
-    position: "relative",
-    width: "100%",
-    borderRadius: "16px",
-    overflow: "hidden",
-    border: "2px solid #e5e7eb",
-    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
-  },
-  mapContainer: {
-    width: "100%",
-    height: "500px",
-    zIndex: 1,
-  },
-
-  /* ─── Legend ─── */
-  legend: {
-    position: "absolute",
-    bottom: "16px",
-    left: "16px",
-    backgroundColor: "rgba(255,255,255,0.95)",
-    backdropFilter: "blur(8px)",
-    padding: "10px 14px",
-    borderRadius: "10px",
-    display: "flex",
-    gap: "14px",
-    zIndex: 1000,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-    border: "1px solid #e5e7eb",
-    flexWrap: "wrap",
-  },
-  legendItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-  },
-  legendDot: {
-    width: "10px",
-    height: "10px",
-    borderRadius: "50%",
-    border: "2px solid #ffffff",
-    boxShadow: "0 0 0 1px rgba(0,0,0,0.1)",
-    flexShrink: 0,
-  },
-  legendText: {
-    fontSize: "11px",
-    fontWeight: "600",
-    color: "#374151",
-    whiteSpace: "nowrap",
-  },
-
-  /* ─── Popup Styles ─── */
-  popupContent: {
-    width: "240px",
-    overflow: "hidden",
-  },
-  popupHeader: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "10px 14px",
-    backgroundColor: "#3b82f6",
-    color: "#ffffff",
-  },
-  popupHeaderIcon: {
-    fontSize: "16px",
-  },
-  popupHeaderText: {
-    fontSize: "13px",
-    fontWeight: "700",
-    flex: 1,
-  },
-  popupBloodBadge: {
-    backgroundColor: "rgba(255,255,255,0.25)",
-    color: "#ffffff",
-    fontSize: "13px",
-    fontWeight: "800",
-    padding: "3px 10px",
-    borderRadius: "6px",
-  },
-  popupBody: {
-    padding: "12px 14px",
-  },
-  popupLabel: {
-    fontSize: "13px",
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: "4px",
-  },
-  popupCoords: {
-    fontSize: "12px",
-    color: "#6b7280",
-    fontFamily: "'Courier New', monospace",
-    marginBottom: "8px",
-  },
-  popupRadiusBadge: {
-    fontSize: "11px",
-    fontWeight: "600",
-    color: "#dc2626",
-    backgroundColor: "#fee2e2",
-    padding: "4px 10px",
-    borderRadius: "6px",
-    display: "inline-block",
-  },
-  popupName: {
-    fontSize: "15px",
-    fontWeight: "700",
-    color: "#1f2937",
-    marginBottom: "10px",
-  },
-  popupInfoRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "4px 0",
-    fontSize: "13px",
-  },
-  popupInfoText: {
-    fontSize: "12px",
-    color: "#374151",
-  },
-  popupActions: {
-    display: "flex",
-    gap: "6px",
-    marginTop: "12px",
-  },
-  popupCallBtn: {
-    flex: 1,
-    padding: "7px 0",
-    fontSize: "12px",
-    fontWeight: "700",
-    color: "#ffffff",
-    backgroundColor: "#16a34a",
-    borderRadius: "8px",
-    textAlign: "center",
-    textDecoration: "none",
-  },
-  popupDirBtn: {
-    flex: 1,
-    padding: "7px 0",
-    fontSize: "12px",
-    fontWeight: "700",
-    color: "#3b82f6",
-    backgroundColor: "#eff6ff",
-    borderRadius: "8px",
-    textAlign: "center",
-    textDecoration: "none",
-    border: "1px solid #dbeafe",
-  },
-};
-
-// Inject marker animation
+// Inject styles
 const mapStyles = document.createElement("style");
 mapStyles.textContent = `
   .custom-marker {
     background: transparent !important;
     border: none !important;
   }
+  .leaflet-popup-content-wrapper {
+    border-radius: 12px !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  .leaflet-popup-content {
+    margin: 12px 20px !important;
+  }
   .leaflet-popup-close-button {
-    color: #6b7280 !important;
-    font-size: 18px !important;
-    padding: 6px 8px !important;
+    color: #9ca3af !important;
+    font-size: 20px !important;
+    top: 8px !important;
+    right: 10px !important;
   }
   .leaflet-popup-close-button:hover {
-    color: #dc2626 !important;
+    color: #ef4444 !important;
+  }
+  .leaflet-control-zoom {
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  }
+  .leaflet-control-zoom a {
+    background: #18181b !important;
+    color: #fafafa !important;
+    border: none !important;
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    font-size: 18px !important;
+  }
+  .leaflet-control-zoom a:hover {
+    background: #27272a !important;
+  }
+  .leaflet-control-zoom-in {
+    border-radius: 10px 10px 0 0 !important;
+  }
+  .leaflet-control-zoom-out {
+    border-radius: 0 0 10px 10px !important;
   }
 `;
 document.head.appendChild(mapStyles);

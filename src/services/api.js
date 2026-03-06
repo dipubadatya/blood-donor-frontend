@@ -5,7 +5,7 @@ import axios from "axios";
 // ─── Create Axios Instance ───
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const API = axios.create({
- baseURL: BASE_URL,
+  baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -48,7 +48,7 @@ export const loginUser = (credentials) => API.post("/auth/login", credentials);
 
 export const getProfile = () => API.get("/auth/me");
 export const updateProfile = async (userData) => {
-  return await API.put("/auth/update", userData); 
+  return await API.put("/auth/update", userData);
 };
 
 
@@ -68,5 +68,18 @@ export const searchDonors = (params) =>
   API.get("/medical/search", { params });
 
 export const getDonorStats = () => API.get("/medical/stats");
+
+// ─── Emergency API Calls ───
+export const createEmergencyRequest = (data) => API.post("/emergency", data);
+export const getEmergencyRequests = () => API.get("/emergency");
+export const getEmergencyHistory = () => API.get("/emergency/history");
+export const acceptEmergencyRequest = (id) => API.put(`/emergency/${id}/accept`);
+export const completeEmergencyRequest = (id) => API.put(`/emergency/${id}/complete`);
+export const cancelEmergencyRequest = (id) => API.put(`/emergency/${id}/cancel`);
+export const rateDonor = (id, rating) => API.post(`/emergency/${id}/rate`, { rating });
+// ─── Notification API Calls ───
+export const getNotifications = () => API.get("/notifications");
+export const markNotificationRead = (id) => API.put(`/notifications/${id}/read`);
+export const markAllNotificationsRead = () => API.put("/notifications/mark-all-read");
 
 export default API;
