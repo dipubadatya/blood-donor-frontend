@@ -1,7 +1,6 @@
 @import "tailwindcss";
 /* ─── Leaflet Map CSS (Phase 5) ─── */
 
-
-@import "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+@import "leaflet/dist/leaflet.css";
 
 /* ─── CSS Reset & Global Styles ─── */
